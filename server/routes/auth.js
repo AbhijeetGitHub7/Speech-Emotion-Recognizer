@@ -44,5 +44,26 @@ router.post('/logout', (req, res) => {
     res.status(200).json({ message: 'Logged out successfully' });
   });
 });
+// Add this middleware in `auth.js`
+const isAuthenticated = (req, res, next) => {
+  if (req.session && req.session.userId) {
+    next(); // User is authenticated
+  } else {
+    res.status(401).json({ message: 'Unauthorized. Please log in.' });
+  }
+};
+
+// Add this route in `auth.js`
+router.get('/home', isAuthenticated, async (req, res) => {
+  try {
+    const user = await User.findById(req.session.userId);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    res.status(200).json({ message: 'Welcome to the home route', user });
+  } catch (err) {
+    res.status(500).json({ error: 'Something went wrong' });
+  }
+});
+
 
 module.exports = router;
