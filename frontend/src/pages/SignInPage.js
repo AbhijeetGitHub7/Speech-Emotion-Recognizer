@@ -94,11 +94,11 @@ function SignInPage() {
             Don't have an account? <a onClick={navigateToSignUp}>Sign Up</a>
           </p>
           <button type="submit" className="signin-button">Sign In</button>
-          <div className="social-buttons">
+          {/* <div className="social-buttons">
             <button type="button" className="social-button google">
               Sign in with Google
             </button>
-          </div>
+          </div> */}
         </form>
       </div>
     </div>

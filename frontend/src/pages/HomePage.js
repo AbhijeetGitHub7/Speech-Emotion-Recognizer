@@ -5,7 +5,7 @@ import '../App.css';
 
 const HomePage = () => {
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", width:"100%"}}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", width:"100%",backgroundColor: "#f5f5f5"}}>
       {/* Material UI Navbar */}
       <AppBar position="sticky">
         <Toolbar>
