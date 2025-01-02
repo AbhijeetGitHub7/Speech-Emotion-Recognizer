@@ -41,31 +41,31 @@ class Conv1DModel(nn.Module):
 class TransformerModel(nn.Module):
     def __init__(self, input_dim, num_classes):
         super(TransformerModel, self).__init__()
-        self.encoder_layer = nn.TransformerEncoderLayer(d_model=input_dim, nhead=4, batch_first=True)
-        self.transformer_encoder = nn.TransformerEncoder(self.encoder_layer, num_layers=4)
-        self.fc = nn.Linear(input_dim, num_classes)
+        self.embedding = nn.Linear(input_dim, 256)
+        self.transformer_layer = nn.TransformerEncoderLayer(d_model=256, nhead=4)
+        self.transformer = nn.TransformerEncoder(self.transformer_layer, num_layers=2)
+        self.classifier = nn.Linear(256, num_classes)
 
-    def forward(self, x):
-        x = self.transformer_encoder(x)
-        x = x.mean(dim=1)  # Global average pooling
-        x = self.fc(x)
-        return x
+    def forward(self, inputs):
+        embedded = self.embedding(inputs)
+        transformer_out = self.transformer(embedded.permute(1, 0, 2))  # Sequence-first
+        logits = self.classifier(transformer_out[0])  # Use the first token's output
+        return logits
 
 # Load the trained PyTorch model
-model = Conv1DModel(input_length=180, num_classes=8)  # Adjust input_dim and num_classes as per your model
-checkpoint = torch.load("./cnn_telugu.pth")
+model = TransformerModel(input_dim=180, num_classes=6)  # Adjust input_dim and num_classes as per your model
+checkpoint = torch.load("./transformer_model.pth")
 model.load_state_dict(checkpoint)
 model.eval()  # Set the model to evaluation mode
 
 # Emotion label map
-label_map = {0: 'anger', 1: 'disgust', 2: 'happy', 3: 'neutral', 4: 'sad',5:"unknown",6:"unknown",7:"unknown"}
+label_map = {0: 'angry', 1: 'disgust', 2: 'happy', 3: 'neutral', 4: 'sad',5:"fear",6:"unknown",7:"unknown"}
 
 
 # Feature extraction function
-def extract_feature(data, sr, mfcc, chroma, mel):
-
+def extract_feature(data, sr, mfcc=True, chroma=True, mel=True):
     """
-    extract features from audio files into numpy array
+    Extract features from audio files into numpy array.
 
     Parameters
     ----------
@@ -76,19 +76,18 @@ def extract_feature(data, sr, mfcc, chroma, mel):
     mel : boolean, Mel Spectrogram Frequency
 
     """
-
+    result = np.array([])
     if chroma:
         stft = np.abs(librosa.stft(data))
-    result = np.array([])
     if mfcc:
         mfccs = np.mean(librosa.feature.mfcc(y=data, sr=sr, n_mfcc=40).T, axis=0)
         result = np.hstack((result, mfccs))
     if chroma:
-        chroma = np.mean(librosa.feature.chroma_stft(S=stft, sr=sr).T,axis=0)
-        result = np.hstack((result, chroma))
+        chroma_features = np.mean(librosa.feature.chroma_stft(S=stft, sr=sr).T, axis=0)
+        result = np.hstack((result, chroma_features))
     if mel:
-        mel = np.mean(librosa.feature.melspectrogram(y=data, sr=sr).T,axis=0)
-        result = np.hstack((result, mel))
+        mel_features = np.mean(librosa.feature.melspectrogram(y=data, sr=sr).T, axis=0)
+        result = np.hstack((result, mel_features))
 
     return result # Stack features horizontally
 
@@ -98,7 +97,6 @@ def process_features(file_path):
     features = extract_feature(data, sr, mfcc=True, chroma=True, mel=True) # Extract audio features
     features = features.reshape(1, 1, -1)
     features = torch.tensor(features).float()  # Convert to tensor
-      # Add batch dimension
     return features
 
 @app.route("/predict", methods=["POST"])
